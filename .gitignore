@@ -104,4 +104,7 @@ dist
 .tern-port
 
 # Torrent files used for testing
-.torrent
+*.torrent
+
+# VS Code
+.vscode
