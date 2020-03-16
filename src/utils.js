@@ -1,3 +1,5 @@
+const _ = require("lodash");
+
 // Taken from https://gist.github.com/nkcmr/6917870
 const percentEncode = buffer => {
   let ret = "";

@@ -2,6 +2,7 @@ const axios = require("axios");
 const parser = require("./parser");
 const bencode = require("bencode");
 const { percentEncode } = require("./utils");
+const Peer = require("./peer");
 
 const PEER_SIZE = 6;
 const IPV4_SIZE = 4;
@@ -15,7 +16,8 @@ const getPeers = async torrent => {
       responseType: "arraybuffer"
     });
     const decoded = bencode.decode(trackerResponse);
-    const peers = parsePeers(decoded.peers);
+    const parsed = parsePeers(decoded.peers);
+    const peers = parsed.map(peer => new Peer(peer.port, peer.ip));
     return peers;
   } catch (err) {
     console.error(err);

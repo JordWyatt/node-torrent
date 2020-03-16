@@ -11,11 +11,12 @@ const open = path => {
   }
 };
 
-const getInfoHash = torrent =>
-  crypto
+const getInfoHash = torrent => {
+  return crypto
     .createHash("sha1")
     .update(bencode.encode(torrent.info))
     .digest();
+};
 
 const getPeerId = () => "-qB4210-PH.d7a-hn83h";
 
