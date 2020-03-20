@@ -4,7 +4,7 @@
   "description": "A CLI BitTorrent client written in Node JS",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,8 @@
     "axios": "^0.19.2",
     "bencode": "^2.0.1",
     "lodash": "^4.17.15"
+  },
+  "devDependencies": {
+    "jest": "^25.1.0"
   }
 }

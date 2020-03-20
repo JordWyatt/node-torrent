@@ -7,7 +7,7 @@ const {
   isHandshake
 } = require("./message");
 
-function download(peer, torrent) {
+const download = (peer, torrent) => {
   const socket = net.createConnection(
     { port: peer.port, host: peer.ip },
     () => {
@@ -31,7 +31,7 @@ function download(peer, torrent) {
   socket.on("end", () => {
     console.log("disconnected from server");
   });
-}
+};
 
 module.exports = async path => {
   try {
