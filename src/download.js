@@ -11,10 +11,11 @@ const download = (peer, torrent) => {
   const socket = net.createConnection(
     { port: peer.port, host: peer.ip },
     () => {
-      console.log("Connected! Writing handshake...");
+      console.log(`Connected to peer with ip ${peer.ip}. Writing handshake...`);
       socket.write(buildHandshake(torrent));
     }
   );
+
   socket.on("data", data => {
     if (isHandshake(data)) {
       const handshakeResponse = parseHandshakeResponse(data);

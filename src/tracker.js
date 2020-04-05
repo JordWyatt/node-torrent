@@ -16,8 +16,7 @@ const getPeers = async torrent => {
       responseType: "arraybuffer"
     });
     const decoded = bencode.decode(trackerResponse);
-    const parsed = parsePeers(decoded.peers);
-    const peers = parsed.map(peer => new Peer(peer.port, peer.ip));
+    const peers = parsePeers(decoded.peers);
     return peers;
   } catch (err) {
     console.error(err);
@@ -45,7 +44,7 @@ const parsePeers = buffer => {
     const ip = parseIPV4Address(buffer.slice(offset, offset + 4));
     const port = parsePort(buffer.slice(offset + 4, offset + PEER_SIZE));
 
-    const peer = { ip, port };
+    const peer = new Peer({ ip, port });
     peers.push(peer);
   }
 

@@ -4,7 +4,7 @@ const pstr = "BitTorrent protocol"; // BitTorrent 1.0 default value
 const HANDSHAKE_LENGTH = 68;
 
 const buildHandshake = torrent => {
-  const message = Buffer.alloc(68);
+  const message = Buffer.alloc(HANDSHAKE_LENGTH);
   message.writeUInt8(pstr.length, 0);
   message.write(pstr, 1);
   message.writeUInt32BE(0, 20);
@@ -36,7 +36,7 @@ const isHandshake = buffer => {
 };
 
 const buildMessage = (id, payload = []) => {
-  if (id === 0) {
+  if (!id && id !== 0) {
     return Buffer.alloc(4);
   }
 
@@ -54,8 +54,7 @@ const buildMessage = (id, payload = []) => {
 };
 
 const parseMessage = buffer => {
-  const length = buffer.readUInt32LE(0);
-
+  const length = buffer.readUInt32BE(0);
   if (length === 0) {
     return { length };
   }
@@ -109,5 +108,6 @@ module.exports = {
   buildHandshake,
   parseHandshakeResponse,
   isHandshake,
-  buildMessage
+  buildMessage,
+  parseMessage
 };
