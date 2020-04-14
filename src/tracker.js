@@ -43,8 +43,7 @@ const parsePeers = buffer => {
     const offset = i * PEER_SIZE;
     const ip = parseIPV4Address(buffer.slice(offset, offset + 4));
     const port = parsePort(buffer.slice(offset + 4, offset + PEER_SIZE));
-
-    const peer = new Peer({ ip, port });
+    const peer = new Peer(port, ip);
     peers.push(peer);
   }
 

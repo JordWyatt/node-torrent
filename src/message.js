@@ -3,7 +3,7 @@ const parser = require("./parser");
 const pstr = "BitTorrent protocol"; // BitTorrent 1.0 default value
 const HANDSHAKE_LENGTH = 68;
 
-const buildHandshake = torrent => {
+const buildHandshake = (torrent) => {
   const message = Buffer.alloc(HANDSHAKE_LENGTH);
   message.writeUInt8(pstr.length, 0);
   message.write(pstr, 1);
@@ -14,7 +14,7 @@ const buildHandshake = torrent => {
   return message;
 };
 
-const parseHandshakeResponse = buffer => {
+const parseHandshake = (buffer) => {
   if (!isHandshake(buffer)) {
     throw new Error("Handshake response malformed");
   }
@@ -28,7 +28,7 @@ const parseHandshakeResponse = buffer => {
   return response;
 };
 
-const isHandshake = buffer => {
+const isHandshake = (buffer) => {
   return (
     buffer.length === HANDSHAKE_LENGTH &&
     buffer.toString("utf8", 1, 20) === "BitTorrent protocol"
@@ -53,19 +53,27 @@ const buildMessage = (id, payload = []) => {
   return buf;
 };
 
-const parseMessage = buffer => {
+const parseMessage = (buffer) => {
   const length = buffer.readUInt32BE(0);
   if (length === 0) {
     return { length };
   }
 
   const id = buffer.readUInt8(4);
-  const payload = buffer.slice(5);
+  let payload = buffer.slice(5);
+
+  if (id === 6 || (id === 7) | (id === 8)) {
+    payload = {
+      index: payload.readUInt32BE(0),
+      begin: payload.readUInt32BE(4),
+    };
+    payload[id === 7 ? "block" : "length"] = payload.slice(8);
+  }
 
   return {
     length,
     id,
-    payload
+    payload,
   };
 };
 
@@ -79,13 +87,13 @@ const buildInterested = () => buildMessage(2);
 
 const buildNotInterested = () => buildMessage(3);
 
-const buildHave = pieceIndex => {
+const buildHave = (pieceIndex) => {
   const buf = Buffer.alloc(4);
   buf.writeUInt32BE(pieceIndex);
   return buildMessage(4, buf);
 };
 
-const buildBitfield = bitfield => buildMessage(5, bitfield);
+const buildBitfield = (bitfield) => buildMessage(5, bitfield);
 
 // also can be used as buildCancel
 const buildRequest = (index, begin, length) => {
@@ -106,8 +114,8 @@ const buildPiece = (index, begin, block) => {
 
 module.exports = {
   buildHandshake,
-  parseHandshakeResponse,
+  parseHandshake,
   isHandshake,
   buildMessage,
-  parseMessage
+  parseMessage,
 };
