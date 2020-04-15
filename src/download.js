@@ -1,6 +1,7 @@
 const net = require("net");
 const parser = require("./parser");
 const tracker = require("./tracker");
+
 const {
   buildHandshake,
   parseHandshake,
@@ -9,9 +10,6 @@ const {
 } = require("./message");
 
 const download = (peer, torrent) => {
-  let savedBuf = Buffer.alloc(0);
-  let handshake = true;
-
   const socket = net.createConnection(
     { port: peer.port, host: peer.ip },
     () => {
@@ -28,7 +26,7 @@ const download = (peer, torrent) => {
     console.log("disconnected from peer");
   });
 
-  onWholeMessage(socket, (message) => messageHandler(message, socket));
+  onWholeMessage(socket, (message) => messageHandler(message, socket, peer));
 };
 
 // Referenced https://allenkim67.github.io/programming/2016/05/04/how-to-make-your-own-bittorrent-client.html#grouping-messages
@@ -52,42 +50,59 @@ const onWholeMessage = (socket, callback) => {
   });
 };
 
-const messageHandler = (data) => {
+const messageHandler = (data, socket, peer) => {
   if (isHandshake(data)) {
     const handshakeResponse = parseHandshake(data);
     console.log("Handshake response: ", handshakeResponse);
   } else {
     const message = parseMessage(data);
-    console.log("got msg");
+
     switch (message.id) {
       case 0:
-        chokeHandler();
+        chokeHandler(peer);
+        break;
       case 1:
-        unchokeHandler();
+        unchokeHandler(peer);
+        break;
       case 4:
-        haveHandler(message.payload);
+        haveHandler(message);
+        break;
       case 5:
-        bitfieldHandler(message.payload);
+        bitfieldHandler(message, peer);
+        break;
       case 7:
-        pieceHandler(message.payload);
+        pieceHandler(message);
+        break;
     }
   }
 };
 
-const chokeHandler = () => {
-  console.log(`Received choke message`);
+const chokeHandler = (peer) => {
+  peer.peerChoking = 1;
 };
-const unchokeHandler = () => {
-  console.log(`Received unchoke message`);
+const unchokeHandler = (peer) => {
+  peer.peerChoking = 0;
 };
-const haveHandler = () => {
+const haveHandler = (message, peer) => {
   console.log(`Received have message`);
+  peer.has.push(message.payload.readUInt32BE(0));
 };
-const bitfieldHandler = (payload) => {
+const bitfieldHandler = (message, peer) => {
+  const bitfield = message.payload;
   console.log(`Received bitfield message`);
+
+  bitfield.forEach((byte, i) => {
+    for (j = 0; j < 8; j++) {
+      if (byte % 2) peer.has.push(j + i * 8);
+      byte = Math.floor(byte / 2);
+    }
+  });
+
+  console.log(peer.has.length);
 };
-const pieceHandler = (payload) => {
-  console.log(`Received piece message`);
+
+const pieceHandler = (message) => {
+  console.log(`Received piece message`, message);
 };
 
 module.exports = async (path) => {

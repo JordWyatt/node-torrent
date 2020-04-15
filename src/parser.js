@@ -2,7 +2,7 @@ const fs = require("fs");
 const bencode = require("bencode");
 const crypto = require("crypto");
 
-const open = path => {
+const open = (path) => {
   if (fs.existsSync(path)) {
     const buffer = fs.readFileSync(path);
     return bencode.decode(buffer);
@@ -11,7 +11,7 @@ const open = path => {
   }
 };
 
-const getInfoHash = torrent => {
+const getInfoHash = (torrent) => {
   return crypto
     .createHash("sha1")
     .update(bencode.encode(torrent.info))
@@ -20,11 +20,11 @@ const getInfoHash = torrent => {
 
 const getPeerId = () => "-qB4210-PH.d7a-hn83h";
 
-const getLength = torrent => torrent.info.length;
+const getLength = (torrent) => torrent.info.length;
 
 module.exports = {
   open,
   getInfoHash,
   getPeerId,
-  getLength
+  getLength,
 };

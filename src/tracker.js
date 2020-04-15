@@ -8,12 +8,12 @@ const PEER_SIZE = 6;
 const IPV4_SIZE = 4;
 const PORT_SIZE = 2;
 
-const getPeers = async torrent => {
+const getPeers = async (torrent) => {
   try {
     const announceUrl = torrent.announce.toString();
     const trackerRequestUrl = buildTrackerRequest(announceUrl, torrent);
     const { data: trackerResponse } = await axios.get(trackerRequestUrl, {
-      responseType: "arraybuffer"
+      responseType: "arraybuffer",
     });
     const decoded = bencode.decode(trackerResponse);
     const peers = parsePeers(decoded.peers);
@@ -30,7 +30,7 @@ const buildTrackerRequest = (url, torrent) => {
   return `${url}?info_hash=${percentEncodedInfoHash}&peer_id=${peerId}&compact=1`;
 };
 
-const parsePeers = buffer => {
+const parsePeers = (buffer) => {
   const peers = [];
 
   if (buffer.length % PEER_SIZE !== 0) {
@@ -50,7 +50,7 @@ const parsePeers = buffer => {
   return peers;
 };
 
-const parseIPV4Address = buffer => {
+const parseIPV4Address = (buffer) => {
   if (buffer.length % IPV4_SIZE !== 0) {
     throw new Error("Received malformed IP Address");
   }
@@ -58,7 +58,7 @@ const parseIPV4Address = buffer => {
   return buffer.join(".");
 };
 
-const parsePort = buffer => {
+const parsePort = (buffer) => {
   if (buffer.length % PORT_SIZE !== 0) {
     throw new Error("Received malformed Port");
   }
@@ -67,5 +67,5 @@ const parsePort = buffer => {
 };
 
 module.exports = {
-  getPeers
+  getPeers,
 };

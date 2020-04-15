@@ -59,8 +59,8 @@ const parseMessage = (buffer) => {
     return { length };
   }
 
-  const id = buffer.readUInt8(4);
-  let payload = buffer.slice(5);
+  const id = buffer.length > 4 ? buffer.readUInt8(4) : null;
+  let payload = buffer.length > 5 ? buffer.slice(5) : null;
 
   if (id === 6 || (id === 7) | (id === 8)) {
     payload = {

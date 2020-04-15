@@ -3,7 +3,7 @@ const {
   buildHandshake,
   buildMessage,
   parseMessage,
-  parseHandshakeResponse
+  parseHandshakeResponse,
 } = require("./message");
 
 const expectedPstr = "BitTorrent protocol";
