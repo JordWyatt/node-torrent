@@ -19,6 +19,10 @@ class Peer {
     return this.working;
   }
 
+  isChoking() {
+    return this.choking;
+  }
+
   setPiece(index) {
     this.pieces[index] = true;
   }
