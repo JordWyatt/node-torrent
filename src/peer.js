@@ -1,11 +1,26 @@
 class Peer {
-  constructor(port, ip) {
+  constructor(port, ip, numPieces) {
     this.ip = ip;
     this.port = port;
-    this.amChoking = 0;
-    this.amInterested = 0;
-    this.peerChoking = 1;
-    this.peerInterested = 0;
+    this.choking = true;
+    this.pieces = new Array(numPieces).fill(false);
+    this.working = false;
+  }
+
+  unchoke() {
+    this.choking = false;
+  }
+
+  choke() {
+    this.choking = true;
+  }
+
+  isWorking() {
+    return this.working;
+  }
+
+  setPiece(index) {
+    this.pieces[index] = true;
   }
 }
 

@@ -7,6 +7,7 @@ const {
   parseHandshake,
   isHandshake,
   parseMessage,
+  buildInterested,
 } = require("./message");
 
 const download = (peer, torrent) => {
@@ -52,8 +53,7 @@ const onWholeMessage = (socket, callback) => {
 
 const messageHandler = (data, socket, peer) => {
   if (isHandshake(data)) {
-    const handshakeResponse = parseHandshake(data);
-    console.log("Handshake response: ", handshakeResponse);
+    socket.write(buildInterested());
   } else {
     const message = parseMessage(data);
 
@@ -78,14 +78,18 @@ const messageHandler = (data, socket, peer) => {
 };
 
 const chokeHandler = (peer) => {
-  peer.peerChoking = 1;
+  console.log("Received choke msg");
+  console.log(peer);
+  peer.choke();
 };
 const unchokeHandler = (peer) => {
-  peer.peerChoking = 0;
+  console.log("Received unchoke msg");
+  peer.unchoke();
 };
 const haveHandler = (message, peer) => {
   console.log(`Received have message`);
-  peer.has.push(message.payload.readUInt32BE(0));
+  const index = message.payload.readUInt32BE(0);
+  peer.setPiece(index);
 };
 const bitfieldHandler = (message, peer) => {
   const bitfield = message.payload;
@@ -93,12 +97,11 @@ const bitfieldHandler = (message, peer) => {
 
   bitfield.forEach((byte, i) => {
     for (j = 0; j < 8; j++) {
-      if (byte % 2) peer.has.push(j + i * 8);
+      const index = j + i * 8;
+      if (byte % 2) peer.setPiece(index);
       byte = Math.floor(byte / 2);
     }
   });
-
-  console.log(peer.has.length);
 };
 
 const pieceHandler = (message) => {

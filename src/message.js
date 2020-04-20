@@ -118,4 +118,5 @@ module.exports = {
   isHandshake,
   buildMessage,
   parseMessage,
+  buildInterested,
 };

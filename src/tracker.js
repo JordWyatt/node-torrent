@@ -7,16 +7,19 @@ const Peer = require("./peer");
 const PEER_SIZE = 6;
 const IPV4_SIZE = 4;
 const PORT_SIZE = 2;
+const SHA1_HASH_NUM_BYTES = 20;
 
 const getPeers = async (torrent) => {
   try {
     const announceUrl = torrent.announce.toString();
+    const numPieces = torrent.info.pieces.length / SHA1_HASH_NUM_BYTES;
+
     const trackerRequestUrl = buildTrackerRequest(announceUrl, torrent);
     const { data: trackerResponse } = await axios.get(trackerRequestUrl, {
       responseType: "arraybuffer",
     });
     const decoded = bencode.decode(trackerResponse);
-    const peers = parsePeers(decoded.peers);
+    const peers = parsePeers(decoded.peers, numPieces);
     return peers;
   } catch (err) {
     console.error(err);
@@ -30,7 +33,7 @@ const buildTrackerRequest = (url, torrent) => {
   return `${url}?info_hash=${percentEncodedInfoHash}&peer_id=${peerId}&compact=1`;
 };
 
-const parsePeers = (buffer) => {
+const parsePeers = (buffer, numPieces) => {
   const peers = [];
 
   if (buffer.length % PEER_SIZE !== 0) {
@@ -43,7 +46,7 @@ const parsePeers = (buffer) => {
     const offset = i * PEER_SIZE;
     const ip = parseIPV4Address(buffer.slice(offset, offset + 4));
     const port = parsePort(buffer.slice(offset + 4, offset + PEER_SIZE));
-    const peer = new Peer(port, ip);
+    const peer = new Peer(port, ip, numPieces);
     peers.push(peer);
   }
 
