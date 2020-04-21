@@ -1,11 +1,23 @@
 const BYTES_PER_SHA1_HASH = 20;
 
+const { getBlocksPerPiece } = require("./torrent-parser");
 class Pieces {
   constructor(torrent) {
     this.queue = this.makeQueue(torrent);
     this.requested = this.makePiecesArray(torrent);
     this.received = this.makePiecesArray(torrent);
   }
+
+  // May end up using this
+  // makeBlocksArray(torrent) {
+  //   const pieceHashes = torrent.info.pieces;
+  //   const numPieces = pieceHashes.length / BYTES_PER_SHA1_HASH;
+  //   const pieces = new Array(numPieces).fill(null);
+  //   const blocks = pieces.map(
+  //     (_, i) => new Array(getBlocksPerPiece(torrent, i).fill(null))
+  //   );
+  //   return blocks;
+  // }
 
   makePiecesArray(torrent) {
     const pieceHashes = torrent.info.pieces;
@@ -24,6 +36,7 @@ class Pieces {
       const piece = {
         index: i,
         hash: pieceHashes.slice(startIndex, endIndex),
+        length: parser.getPieceLength(torrent, i),
       };
       queue.push(piece);
     }
