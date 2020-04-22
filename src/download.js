@@ -1,4 +1,5 @@
 const net = require("net");
+const cliProgress = require("cli-progress");
 const parser = require("./parser");
 const tracker = require("./tracker");
 const Pieces = require("./pieces");
@@ -9,23 +10,21 @@ const {
   isHandshake,
   parseMessage,
   buildInterested,
+  buildRequest,
 } = require("./message");
+
+const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 
 const download = (peer, pieces, torrent) => {
   const socket = net.createConnection(
     { port: peer.port, host: peer.ip },
     () => {
-      console.log(`Connected to peer with ip ${peer.ip}. Writing handshake...`);
       socket.write(buildHandshake(torrent));
     }
   );
 
   socket.on("error", (e) => {
-    console.log(e);
-  });
-
-  socket.on("end", () => {
-    console.log("disconnected from peer");
+    //console.log(e);
   });
 
   onWholeMessage(socket, (message) =>
@@ -58,12 +57,6 @@ const messageHandler = (data, socket, peer, pieces) => {
   if (isHandshake(data)) {
     socket.write(buildInterested());
   } else {
-    const startWork = () => {
-      if (!peer.isWorking()) {
-        requestPiece(socket, pieces, peer);
-      }
-    };
-
     const message = parseMessage(data);
 
     switch (message.id) {
@@ -71,40 +64,38 @@ const messageHandler = (data, socket, peer, pieces) => {
         chokeHandler(peer);
         break;
       case 1:
-        unchokeHandler(peer, startWork);
+        unchokeHandler(peer, () => requestBlock(socket, pieces, peer));
         break;
       case 4:
-        haveHandler(message, peer, startWork);
+        haveHandler(message, peer, () => requestBlock(socket, pieces, peer));
         break;
       case 5:
-        bitfieldHandler(message, peer, startWork);
+        bitfieldHandler(message, peer, () =>
+          requestBlock(socket, pieces, peer)
+        );
         break;
       case 7:
-        pieceHandler(message);
+        pieceHandler(message, pieces, () => requestBlock(socket, pieces, peer));
         break;
     }
   }
 };
 
-const chokeHandler = (peer) => {
-  console.log("Received choke msg");
-  console.log(peer);
-  peer.choke();
-};
+const chokeHandler = (peer) => peer.choke();
+
 const unchokeHandler = (peer, cb) => {
-  console.log("Received unchoke msg");
   peer.unchoke();
   cb();
 };
+
 const haveHandler = (message, peer, cb) => {
-  console.log(`Received have message`);
   const index = message.payload.readUInt32BE(0);
   peer.setPiece(index);
   cb();
 };
+
 const bitfieldHandler = (message, peer, cb) => {
   const bitfield = message.payload;
-  console.log(`Received bitfield message`);
 
   bitfield.forEach((byte, i) => {
     for (j = 0; j < 8; j++) {
@@ -117,13 +108,33 @@ const bitfieldHandler = (message, peer, cb) => {
   cb();
 };
 
-const pieceHandler = (message) => {
-  console.log(`Received piece message`, message);
+const pieceHandler = ({ payload }, pieces, cb) => {
+  pieces.addReceived(payload);
+  updateProgressBar(pieces);
+  cb();
 };
 
-const requestPiece = (socket, pieces, peer) => {
+const requestBlock = (socket, pieces, peer) => {
   if (peer.isChoking()) return;
-  console.log(`Requesting Piece...`);
+
+  const { queue } = pieces;
+
+  while (queue.length) {
+    let block = queue.shift();
+    if (peer.hasPiece(block.index)) {
+      socket.write(buildRequest(block.index, block.begin, block.length));
+      pieces.addRequested(block);
+      break;
+    }
+  }
+};
+
+const updateProgressBar = (pieces) => {
+  bar.update(
+    pieces.received.reduce((totalBlocks, blocks) => {
+      return blocks.filter((i) => i).length + totalBlocks;
+    }, 0)
+  );
 };
 
 module.exports = async (path) => {
@@ -131,7 +142,8 @@ module.exports = async (path) => {
     const torrent = parser.open(path);
     const peers = await tracker.getPeers(torrent);
     const pieces = new Pieces(torrent);
-    peers.slice(0, 1).forEach((peer) => download(peer, pieces, torrent));
+    bar.start(pieces.queue.length, 0);
+    peers.forEach((peer) => download(peer, pieces, torrent));
   } catch (err) {
     console.error(err);
   }

@@ -19,6 +19,7 @@
   "dependencies": {
     "axios": "^0.19.2",
     "bencode": "^2.0.1",
+    "cli-progress": "^3.8.0",
     "lodash": "^4.17.15"
   },
   "devDependencies": {

@@ -22,22 +22,27 @@ const getInfoHash = (torrent) => {
 
 const getPeerId = () => "-qB4210-PH.d7a-hn83h";
 
-const getLength = (torrent) => torrent.info.length;
+const getBlockLength = (torrent, pieceIndex, blockIndex) => {
+  const pieceLength = getPieceLength(torrent, pieceIndex);
+
+  const lastBlockLength = pieceLength % BLOCK_LENGTH || BLOCK_LENGTH;
+  const lastBlockIndex = Math.floor(pieceLength / blockIndex);
+
+  return lastBlockIndex === blockIndex ? lastBlockLength : BLOCK_LENGTH;
+};
 
 const getPieceLength = (torrent, pieceIndex) => {
-  const maxPieceLength = torrent.info.piece_length;
+  const maxPieceLength = torrent.info["piece length"];
   const fileLength = torrent.info.length;
 
-  const lastPieceLength = fileLength % maxPieceLength;
+  const lastPieceLength = fileLength % maxPieceLength || maxPieceLength;
+  const lastPieceIndex = Math.floor(fileLength / maxPieceLength);
 
-  const start = pieceIndex * maxPieceLength;
-  const end = start + maxPieceLength;
-
-  return end > lastPieceLength ? lastPieceLength : maxPieceLength;
+  return lastPieceIndex === pieceIndex ? lastPieceLength : maxPieceLength;
 };
 
 const getBlocksPerPiece = (torrent, pieceIndex) => {
-  const pieceLength = this.getPieceLength(torrent, pieceIndex);
+  const pieceLength = getPieceLength(torrent, pieceIndex);
   return Math.ceil(pieceLength / BLOCK_LENGTH);
 };
 
@@ -45,7 +50,8 @@ module.exports = {
   open,
   getInfoHash,
   getPeerId,
-  getLength,
   getBlocksPerPiece,
   getPieceLength,
+  getBlockLength,
+  BLOCK_LENGTH,
 };

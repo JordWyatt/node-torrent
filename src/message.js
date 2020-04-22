@@ -63,11 +63,12 @@ const parseMessage = (buffer) => {
   let payload = buffer.length > 5 ? buffer.slice(5) : null;
 
   if (id === 6 || (id === 7) | (id === 8)) {
+    let rest = payload.slice(8);
     payload = {
       index: payload.readUInt32BE(0),
       begin: payload.readUInt32BE(4),
     };
-    payload[id === 7 ? "block" : "length"] = payload.slice(8);
+    payload[id === 7 ? "block" : "length"] = rest.slice(8);
   }
 
   return {
@@ -119,4 +120,5 @@ module.exports = {
   buildMessage,
   parseMessage,
   buildInterested,
+  buildRequest,
 };

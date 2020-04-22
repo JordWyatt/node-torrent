@@ -26,6 +26,10 @@ class Peer {
   setPiece(index) {
     this.pieces[index] = true;
   }
+
+  hasPiece(index) {
+    return this.pieces[index];
+  }
 }
 
 module.exports = Peer;
