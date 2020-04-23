@@ -1,5 +1,4 @@
 const cliProgress = require("cli-progress");
-
 const BYTES_PER_SHA1_HASH = 20;
 
 const { getBlocksPerPiece, getBlockLength, BLOCK_LENGTH } = require("./parser");
@@ -56,6 +55,16 @@ class Pieces {
     const { index: pieceIndex, begin } = block;
     const blockIndex = begin / BLOCK_LENGTH;
     this.requested[pieceIndex][blockIndex] = true;
+  }
+
+  isNeeded(block) {
+    const pieceIndex = block.index;
+    const blockIndex = block.begin / BLOCK_LENGTH;
+    return !this.received[pieceIndex][blockIndex];
+  }
+
+  isDone() {
+    return this.received.every((blocks) => blocks.every((block) => block));
   }
 }
 

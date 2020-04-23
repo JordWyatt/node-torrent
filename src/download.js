@@ -1,3 +1,4 @@
+const fs = require("fs");
 const net = require("net");
 const cliProgress = require("cli-progress");
 const parser = require("./parser");
@@ -15,7 +16,7 @@ const {
 
 const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 
-const download = (peer, pieces, torrent) => {
+const download = (peer, pieces, torrent, file) => {
   const socket = net.createConnection(
     { port: peer.port, host: peer.ip },
     () => {
@@ -28,7 +29,7 @@ const download = (peer, pieces, torrent) => {
   });
 
   onWholeMessage(socket, (message) =>
-    messageHandler(message, socket, peer, pieces)
+    messageHandler(message, socket, peer, pieces, file, torrent)
   );
 };
 
@@ -53,12 +54,11 @@ const onWholeMessage = (socket, callback) => {
   });
 };
 
-const messageHandler = (data, socket, peer, pieces) => {
+const messageHandler = (data, socket, peer, pieces, file, torrent) => {
   if (isHandshake(data)) {
     socket.write(buildInterested());
   } else {
     const message = parseMessage(data);
-
     switch (message.id) {
       case 0:
         chokeHandler(peer);
@@ -75,7 +75,9 @@ const messageHandler = (data, socket, peer, pieces) => {
         );
         break;
       case 7:
-        pieceHandler(message, pieces, () => requestBlock(socket, pieces, peer));
+        pieceHandler(message, pieces, file, torrent, socket, () =>
+          requestBlock(socket, pieces, peer)
+        );
         break;
     }
   }
@@ -108,10 +110,25 @@ const bitfieldHandler = (message, peer, cb) => {
   cb();
 };
 
-const pieceHandler = ({ payload }, pieces, cb) => {
+const pieceHandler = ({ payload }, pieces, file, torrent, socket, cb) => {
   pieces.addReceived(payload);
   updateProgressBar(pieces);
+  writeBlock(file, torrent, payload, () => {
+    if (pieces.isDone()) {
+      // verifyHash(file, torrent);
+      bar.stop();
+      console.log("Completed Download");
+      fs.copyFileSync(file);
+      socket.end();
+    }
+  });
+
   cb();
+};
+
+const writeBlock = (file, torrent, { index, begin, block }, cb) => {
+  const offset = index * torrent.info["piece length"] + begin;
+  fs.write(file, block, 0, block.length, offset, cb);
 };
 
 const requestBlock = (socket, pieces, peer) => {
@@ -124,6 +141,11 @@ const requestBlock = (socket, pieces, peer) => {
     if (peer.hasPiece(block.index)) {
       socket.write(buildRequest(block.index, block.begin, block.length));
       pieces.addRequested(block);
+      setTimeout(() => {
+        if (pieces.isNeeded(block)) {
+          queue.push(block);
+        }
+      }, 10000);
       break;
     }
   }
@@ -140,10 +162,11 @@ const updateProgressBar = (pieces) => {
 module.exports = async (path) => {
   try {
     const torrent = parser.open(path);
+    const file = fs.openSync(torrent.info.name, "w");
     const peers = await tracker.getPeers(torrent);
     const pieces = new Pieces(torrent);
     bar.start(pieces.queue.length, 0);
-    peers.forEach((peer) => download(peer, pieces, torrent));
+    peers.forEach((peer) => download(peer, pieces, torrent, file));
   } catch (err) {
     console.error(err);
   }
