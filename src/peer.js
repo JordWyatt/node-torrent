@@ -1,10 +1,14 @@
 class Peer {
   constructor(port, ip, numPieces) {
-    this.ip = ip;
-    this.port = port;
-    this.choking = true;
-    this.pieces = new Array(numPieces).fill(false);
-    this.working = false;
+    this.initialise = () => {
+      this.ip = ip;
+      this.port = port;
+      this.choking = true;
+      this.pieces = new Array(numPieces).fill(false);
+      this.handshakeComplete = false;
+    };
+
+    this.initialise();
   }
 
   unchoke() {
@@ -29,6 +33,14 @@ class Peer {
 
   hasPiece(index) {
     return this.pieces[index];
+  }
+
+  isHandshakeComplete() {
+    return this.handshakeComplete;
+  }
+
+  completeHandshake() {
+    this.handshakeComplete = true;
   }
 }
 

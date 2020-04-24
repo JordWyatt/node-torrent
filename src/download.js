@@ -17,39 +17,46 @@ const {
 const bar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
 
 const download = (peer, pieces, torrent, file) => {
-  const socket = net.createConnection(
-    { port: peer.port, host: peer.ip },
-    () => {
-      socket.write(buildHandshake(torrent));
-    }
-  );
+  const socket = net.createConnection({ port: peer.port, host: peer.ip });
+
+  socket.on("connect", () => {
+    socket.write(buildHandshake(torrent));
+  });
+
+  // attempt reconnect on failed
+  socket.on("close", () => {
+    setTimeout(function () {
+      peer.initialise();
+      socket.connect(peer.port, peer.ip);
+    }, 5000);
+  });
 
   socket.on("error", (e) => {
     //console.log(e);
   });
 
-  onWholeMessage(socket, (message) =>
+  onWholeMessage(socket, peer, (message) =>
     messageHandler(message, socket, peer, pieces, file, torrent)
   );
 };
 
 // Referenced https://allenkim67.github.io/programming/2016/05/04/how-to-make-your-own-bittorrent-client.html#grouping-messages
-const onWholeMessage = (socket, callback) => {
+const onWholeMessage = (socket, peer, callback) => {
   let workingBuffer = Buffer.alloc(0);
-  let handshake = true;
 
   socket.on("data", (receivedBuffer) => {
     // msgLen calculates the length of a whole message
     const msgLen = () =>
-      handshake
-        ? workingBuffer.readUInt8(0) + 49
-        : workingBuffer.readInt32BE(0) + 4;
+      peer.isHandshakeComplete()
+        ? workingBuffer.readInt32BE(0) + 4
+        : workingBuffer.readUInt8(0) + 49;
+
     workingBuffer = Buffer.concat([workingBuffer, receivedBuffer]);
 
     while (workingBuffer.length >= 4 && workingBuffer.length >= msgLen()) {
       callback(workingBuffer.slice(0, msgLen()));
       workingBuffer = workingBuffer.slice(msgLen());
-      handshake = false;
+      peer.completeHandshake();
     }
   });
 };
@@ -75,7 +82,7 @@ const messageHandler = (data, socket, peer, pieces, file, torrent) => {
         );
         break;
       case 7:
-        pieceHandler(message, pieces, file, torrent, socket, () =>
+        pieceHandler(message, pieces, file, torrent, socket, peer, () =>
           requestBlock(socket, pieces, peer)
         );
         break;
@@ -110,7 +117,7 @@ const bitfieldHandler = (message, peer, cb) => {
   cb();
 };
 
-const pieceHandler = ({ payload }, pieces, file, torrent, socket, cb) => {
+const pieceHandler = ({ payload }, pieces, file, torrent, socket, peer, cb) => {
   pieces.addReceived(payload);
   updateProgressBar(pieces);
   writeBlock(file, torrent, payload, () => {
@@ -120,10 +127,10 @@ const pieceHandler = ({ payload }, pieces, file, torrent, socket, cb) => {
       console.log("Completed Download");
       fs.copyFileSync(file);
       socket.end();
+    } else {
+      cb();
     }
   });
-
-  cb();
 };
 
 const writeBlock = (file, torrent, { index, begin, block }, cb) => {
@@ -143,9 +150,10 @@ const requestBlock = (socket, pieces, peer) => {
       pieces.addRequested(block);
       setTimeout(() => {
         if (pieces.isNeeded(block)) {
+          console.log("Block failed to DL after 10s, adding to queue");
           queue.push(block);
         }
-      }, 10000);
+      }, 30000);
       break;
     }
   }
@@ -166,6 +174,7 @@ module.exports = async (path) => {
     const peers = await tracker.getPeers(torrent);
     const pieces = new Pieces(torrent);
     bar.start(pieces.queue.length, 0);
+    console.log(peers.length);
     peers.forEach((peer) => download(peer, pieces, torrent, file));
   } catch (err) {
     console.error(err);
