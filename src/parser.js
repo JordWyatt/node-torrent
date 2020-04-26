@@ -26,7 +26,7 @@ const getBlockLength = (torrent, pieceIndex, blockIndex) => {
   const pieceLength = getPieceLength(torrent, pieceIndex);
 
   const lastBlockLength = pieceLength % BLOCK_LENGTH || BLOCK_LENGTH;
-  const lastBlockIndex = Math.floor(pieceLength / blockIndex);
+  const lastBlockIndex = Math.floor(pieceLength / blockIndex) - 1;
 
   return lastBlockIndex === blockIndex ? lastBlockLength : BLOCK_LENGTH;
 };
@@ -36,7 +36,7 @@ const getPieceLength = (torrent, pieceIndex) => {
   const fileLength = torrent.info.length;
 
   const lastPieceLength = fileLength % maxPieceLength || maxPieceLength;
-  const lastPieceIndex = Math.floor(fileLength / maxPieceLength);
+  const lastPieceIndex = Math.floor(fileLength / maxPieceLength) - 1;
 
   return lastPieceIndex === pieceIndex ? lastPieceLength : maxPieceLength;
 };

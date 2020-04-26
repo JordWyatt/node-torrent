@@ -10,9 +10,7 @@ class Pieces {
   }
 
   makeBlocksArray(torrent) {
-    const pieceHashes = torrent.info.pieces;
-    const numPieces = pieceHashes.length / BYTES_PER_SHA1_HASH;
-    const pieces = new Array(numPieces).fill(null);
+    const pieces = this.makePiecesArray(torrent);
     const blocks = pieces.map((_, i) =>
       new Array(getBlocksPerPiece(torrent, i)).fill(null)
     );
@@ -21,8 +19,8 @@ class Pieces {
 
   makePiecesArray(torrent) {
     const pieceHashes = torrent.info.pieces;
-    const numPieces = pieceHashes.length / BYTES_PER_SHA1_HASH;
-    const arr = new Array(numPieces).fill(null);
+    const numHashes = pieceHashes.length / BYTES_PER_SHA1_HASH;
+    const arr = new Array(numHashes).fill(null);
     return arr;
   }
 

@@ -42,6 +42,15 @@ class Peer {
   completeHandshake() {
     this.handshakeComplete = true;
   }
+
+  setTimeout(cb, ms) {
+    this.timeout = setInterval(cb, ms);
+
+    this.resetTimeout = () => {
+      clearInterval(this.timeout);
+      this.timeout = setInterval(cb, ms);
+    };
+  }
 }
 
 module.exports = Peer;
