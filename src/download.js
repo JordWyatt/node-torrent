@@ -1,4 +1,5 @@
 const fs = require("fs");
+const crypto = require("crypto");
 const net = require("net");
 const cliProgress = require("cli-progress");
 const parser = require("./parser");
@@ -32,12 +33,12 @@ const download = (peer, pieces, torrent, file) => {
         peer.initialise();
         socket.connect(peer.port, peer.ip);
       }, 5000);
+    } else {
+      socket.end();
     }
   });
 
-  socket.on("error", (e) => {
-    console.log(e);
-  });
+  socket.on("error", (e) => {});
 
   onWholeMessage(socket, peer, (message) =>
     messageHandler(message, socket, peer, pieces, file, torrent)
@@ -135,38 +136,47 @@ const pieceHandler = ({ payload }, pieces, file, torrent, socket, peer, cb) => {
     if (pieces.isDone()) {
       bar.stop();
       console.log("Completed Download... Verfying SHA1 Hash");
-      //verifyHash(file, torrent);
+      verifyHash(file, torrent);
+      fs.closeSync(file);
+      process.exit();
     } else {
       cb();
     }
   });
 };
 
+const calculateFileHash = (file, torrent) => {
+  const numberOfPieceHashes = Math.ceil(
+    torrent.info.length / torrent.info["piece length"]
+  );
+  const sha1string = Buffer.alloc(numberOfPieceHashes * 20);
+  const bf = Buffer.alloc(torrent.info["piece length"]);
+
+  for (i = 0; i < numberOfPieceHashes; i++) {
+    const start = i * torrent.info["piece length"];
+    let end = start + torrent.info["piece length"];
+
+    if (end > torrent.info.length) {
+      end = contents.length - start;
+    }
+
+    fs.readSync(file, bf, 0, end - start, start);
+    const hash = crypto.createHash("sha1").update(bf).digest();
+    hash.copy(sha1string, i * 20);
+  }
+
+  return sha1string;
+};
+
 // TODO: Make this work
-// const verifyHash = (file, torrent) => {
-//   const contents = Buffer.alloc(torrent.info.length);
-//   fs.readSync(file, contents);
-//   const expectedFileLength = torrent.info.length;
-//   const expectedNumberOfPieces =
-//     expectedFileLength / torrent.info["piece length"];
-//   const bf = Buffer.alloc(0);
+const verifyHash = (file, torrent) => {
+  const fileHash = calculateFileHash(file, torrent);
+  if (!Buffer.compare(fileHash, torrent.info.pieces) === 0) {
+    throw new Error("Piece hashes invalid");
+  }
 
-//   for (i = 0; i < expectedNumberOfPieces; i++) {
-//     const start = i * torrent.info["piece length"];
-//     let emd = start + torrent.info["piece length"];
-
-//     if (end > contents.length) {
-//       end = contents.length - 1;
-//     }
-
-//     const piece = contents.slice(start, end);
-//     const hash = crypto
-//       .createHash("sha1")
-//       .update(bencode.encode(piece))
-//       .digest();
-//     hash.copy(bf);
-//   }
-// };
+  console.log("SHA1 Piece Hash verified");
+};
 
 const writeBlock = (file, torrent, { index, begin, block }, cb) => {
   const offset = index * torrent.info["piece length"] + begin;
@@ -186,10 +196,9 @@ const requestBlock = (socket, pieces, peer) => {
       pieces.addRequested(block);
       setTimeout(() => {
         if (pieces.isNeeded(block)) {
-          console.log("Block failed to DL after 10s, adding to queue");
           queue.push(block);
         }
-      }, 10000);
+      }, 2500);
       break;
     }
   }
@@ -206,17 +215,9 @@ const updateProgressBar = (pieces) => {
 module.exports = async (path) => {
   try {
     const torrent = parser.open(path);
-    const file = fs.openSync(torrent.info.name, "w");
+    const file = fs.openSync(torrent.info.name, "w+");
     const peers = await tracker.getPeers(torrent);
     const pieces = new Pieces(torrent);
-
-    // setInterval(() => {
-    //   console.log("-----------------------------------------");
-    //   console.log(pieces.queue.length);
-    //   console.log(pieces.queue);
-    //   console.log(pieces.received.filter((blocks) => !blocks.every((i) => i)));
-    //   console.log("-----------------------------------------");
-    // }, 10000);
 
     bar.start(pieces.queue.length, 0);
     peers.forEach((peer) => download(peer, pieces, torrent, file));

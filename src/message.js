@@ -68,7 +68,7 @@ const parseMessage = (buffer) => {
       index: payload.readUInt32BE(0),
       begin: payload.readUInt32BE(4),
     };
-    payload[id === 7 ? "block" : "length"] = rest.slice(8);
+    payload[id === 7 ? "block" : "length"] = rest;
   }
 
   return {
